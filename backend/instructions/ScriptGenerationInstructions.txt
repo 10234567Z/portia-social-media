@@ -1,0 +1,1 @@
+Design a nice youtube script as per the requirements in the prompt given by the user, It should be only a textual scripts no images or placeholders accepted, a total textual and complete script as output.

@@ -1,0 +1,1 @@
+Design a nice social media post as per the requirements in the prompt given by the user, It should be only a textual post no images or placeholders accepted, a total textual and complete post as output.
