@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
@@ -7,25 +6,15 @@ import asyncio
 from typing import Dict, Any
 import uuid
 from dotenv import load_dotenv
-import logging
-from io import StringIO
+
 import sys
+import io
+import subprocess
+from contextlib import redirect_stdout, redirect_stderr
 
 from tools.PostCreation import PostCreationTool
 from tools.YoutubeScript import ScriptCreationTool
 from utilities.file_loader import load_instructions_file
-
-from portia import (
-    DefaultToolRegistry,
-    InMemoryToolRegistry,
-    Portia,
-    Config,
-    Tool,
-    ToolHardError,
-    ToolRunContext,
-    Message,
-)
-from portia.cli import CLIExecutionHooks
 
 load_dotenv()
 
@@ -52,18 +41,6 @@ class ContentResponse(BaseModel):
 # Store active plans
 active_plans: Dict[str, Dict[str, Any]] = {}
 
-# Custom log handler to capture logs
-class LogCapture:
-    def __init__(self):
-        self.logs = []
-        
-    def write(self, message):
-        if message.strip():
-            self.logs.append(message.strip())
-            
-    def flush(self):
-        pass
-
 @app.post("/api/generate", response_model=ContentResponse)
 async def generate_content(request: ContentRequest):
     """Start content generation and return plan ID for tracking"""
@@ -89,70 +66,68 @@ async def generate_content(request: ContentRequest):
     )
 
 async def run_content_generation(plan_id: str, content: str):
-    """Run the actual content generation"""
+    """Run the actual content generation by calling main.py and capturing output"""
     try:
         # Update status
         active_plans[plan_id]["status"] = "running"
+        active_plans[plan_id]["logs"].append("Starting content generation...")
         
-        # Capture logs
-        log_capture = LogCapture()
-        
-        # Setup logging to capture Portia logs
-        logger = logging.getLogger()
-        handler = logging.StreamHandler(log_capture)
-        handler.setLevel(logging.INFO)
-        logger.addHandler(handler)
-        
-        # Write content to inbox
-        with open("inbox.txt", "w") as f:
+        # Write content to a temp file for main.py to use
+        with open("temp_content.txt", "w") as f:
             f.write(content)
         
-        # Setup Portia
-        config = Config.from_default(default_log_level="INFO")
-        tools = DefaultToolRegistry(config=config) + \
-                InMemoryToolRegistry.from_local_tools([PostCreationTool()]) + \
-                InMemoryToolRegistry.from_local_tools([ScriptCreationTool()])
+        active_plans[plan_id]["logs"].append("Running Portia content generation...")
         
-        portia = Portia(
-            config=config,
-            tools=tools,
-            execution_hooks=CLIExecutionHooks(),
+        # Run the main.py script and capture its output
+        import os
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, "main.py", 
+            "--content", content,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=os.getcwd()
         )
         
-        planning_prompt = f"Use the post_creation tool to generate a text post from this description and script_creation tool from this content given: {content}"
+        # Read output line by line as it comes
+        async for line in process.stdout:
+            line_str = line.decode('utf-8').strip()
+            if line_str:
+                active_plans[plan_id]["logs"].append(line_str)
+                
+                # Extract step outputs from the CLI logs
+                if "Step output -" in line_str:
+                    step_output = line_str.split("Step output - ", 1)[1] if len(line_str.split("Step output - ", 1)) > 1 else ""
+                    
+                    # Check recent logs to determine which step this belongs to
+                    recent_logs = active_plans[plan_id]["logs"][-10:]
+                    if any("step 0:" in log.lower() for log in recent_logs):
+                        active_plans[plan_id]["outputs"]["post"] = step_output
+                    elif any("step 1:" in log.lower() for log in recent_logs):
+                        active_plans[plan_id]["outputs"]["script"] = step_output
         
-        # Add log
-        active_plans[plan_id]["logs"].append("Planning started...")
+        # Wait for process to complete
+        await process.wait()
         
-        # Create plan
-        plan = portia.plan(planning_prompt)
-        active_plans[plan_id]["logs"].append(f"Plan created with {len(plan.steps)} steps")
-        active_plans[plan_id]["plan"] = plan.pretty_print()
+        # Check if we got outputs, if not try to extract from final output
+        if not active_plans[plan_id]["outputs"]:
+            active_plans[plan_id]["logs"].append("Extracting outputs from final result...")
+            # Look for final output in logs
+            for log in active_plans[plan_id]["logs"]:
+                if "Final output:" in log:
+                    final_content = log.split("Final output:", 1)[1].strip()
+                    # Split into post and script (rough approach)
+                    if len(final_content) > 100:
+                        mid_point = len(final_content) // 2
+                        active_plans[plan_id]["outputs"]["post"] = final_content[:mid_point]
+                        active_plans[plan_id]["outputs"]["script"] = final_content[mid_point:]
+                    break
         
-        # Update status
-        active_plans[plan_id]["status"] = "executing"
-        active_plans[plan_id]["logs"].append("Executing plan...")
+        # Clean up temp file
+        if os.path.exists("temp_content.txt"):
+            os.remove("temp_content.txt")
         
-        # Run plan
-        result = portia.run_plan(plan)
-        
-        # Extract outputs from logs
-        outputs = {}
-        for log_entry in log_capture.logs:
-            if "Step output -" in log_entry:
-                if "post_creation" in active_plans[plan_id]["logs"][-3:]:
-                    outputs["post"] = log_entry.split("Step output - ", 1)[1] if len(log_entry.split("Step output - ", 1)) > 1 else ""
-                elif "script_creation" in active_plans[plan_id]["logs"][-3:]:
-                    outputs["script"] = log_entry.split("Step output - ", 1)[1] if len(log_entry.split("Step output - ", 1)) > 1 else ""
-        
-        # Store outputs
-        active_plans[plan_id]["outputs"] = outputs
-        active_plans[plan_id]["logs"].extend(log_capture.logs)
         active_plans[plan_id]["status"] = "completed"
-        active_plans[plan_id]["logs"].append("Content generation completed!")
-        
-        # Clean up logger
-        logger.removeHandler(handler)
+        active_plans[plan_id]["logs"].append("Content generation completed successfully!")
         
     except Exception as e:
         active_plans[plan_id]["status"] = "error"
@@ -178,43 +153,6 @@ async def get_status(plan_id: str):
     }
     
     return response
-
-@app.get("/api/stream/{plan_id}")
-async def stream_progress(plan_id: str):
-    """Stream live progress updates"""
-    
-    if plan_id not in active_plans:
-        raise HTTPException(status_code=404, detail="Plan not found")
-    
-    async def event_stream():
-        last_log_count = 0
-        
-        while True:
-            plan_data = active_plans[plan_id]
-            current_logs = plan_data["logs"]
-            
-            # Send new logs
-            if len(current_logs) > last_log_count:
-                new_logs = current_logs[last_log_count:]
-                for log in new_logs:
-                    yield f"data: {json.dumps({'type': 'log', 'message': log})}\n\n"
-                last_log_count = len(current_logs)
-            
-            # Send status update
-            yield f"data: {json.dumps({'type': 'status', 'status': plan_data['status']})}\n\n"
-            
-            # If completed or error, send final data and break
-            if plan_data["status"] in ["completed", "error"]:
-                yield f"data: {json.dumps({'type': 'complete', 'outputs': plan_data.get('outputs', {}), 'error': plan_data.get('error')})}\n\n"
-                break
-                
-            await asyncio.sleep(1)
-    
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/plain",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
-    )
 
 @app.get("/api/plans")
 async def list_plans():
