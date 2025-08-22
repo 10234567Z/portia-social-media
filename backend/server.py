@@ -91,6 +91,7 @@ async def run_content_generation(plan_id: str, content: str):
         # Read output line by line as it comes
         async for line in process.stdout:
             line_str = line.decode('utf-8').strip()
+            print(line_str)  # For debugging purposes
             if line_str:
                 active_plans[plan_id]["logs"].append(line_str)
                 
@@ -100,10 +101,8 @@ async def run_content_generation(plan_id: str, content: str):
                     
                     # Check recent logs to determine which step this belongs to
                     recent_logs = active_plans[plan_id]["logs"][-10:]
-                    if any("step 0:" in log.lower() for log in recent_logs):
+                    if any("Step Output" in log.lower() for log in recent_logs):
                         active_plans[plan_id]["outputs"]["post"] = step_output
-                    elif any("step 1:" in log.lower() for log in recent_logs):
-                        active_plans[plan_id]["outputs"]["script"] = step_output
         
         # Wait for process to complete
         await process.wait()

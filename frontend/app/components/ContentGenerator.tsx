@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video } from 'lucide-react'
+import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video, Copy, Check } from 'lucide-react'
 
 interface GenerationOutput {
   post?: string
@@ -26,6 +26,7 @@ export function ContentGenerator() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [logs, setLogs] = useState<string[]>([])
   const [savedOutputs, setSavedOutputs] = useState<GenerationOutput[]>([])
+  const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({}) // Track copy states
 
   // Load saved outputs from localStorage on component mount
   useEffect(() => {
@@ -38,6 +39,56 @@ export function ContentGenerator() {
       }
     }
   }, [])
+
+  // Function to extract post and script from logs
+  const extractOutputsFromLogs = (logs: string[]) => {
+    const outputs: GenerationOutput = {}
+    let stepOutputCount = 0
+    
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i]
+      
+      if (log.includes("Step output -")) {
+        stepOutputCount++
+        
+        // Extract content after "Step output - "
+        const stepOutputStart = log.indexOf("Step output - ") + "Step output - ".length
+        let content = log.substring(stepOutputStart)
+        
+        // Collect subsequent lines until we hit next "INFO"
+        for (let j = i + 1; j < logs.length; j++) {
+          if (logs[j].includes("INFO")) {
+            break
+          }
+          content += "\n" + logs[j]
+        }
+        
+        // Assign based on step count
+        if (stepOutputCount === 1) {
+          outputs.post = content.trim()
+        } else if (stepOutputCount === 2) {
+          outputs.script = content.trim()
+        }
+      }
+    }
+    
+    return outputs
+  }
+
+  // Enhanced copy function with visual feedback
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedStates(prev => ({ ...prev, [id]: true }))
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedStates(prev => ({ ...prev, [id]: false }))
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+    }
+  }
 
   const generateContent = async () => {
     if (!content.trim()) return
@@ -82,24 +133,37 @@ export function ContentGenerator() {
         const statusData: StatusResponse = await response.json()
         setStatus(statusData)
         setLogs(statusData.logs)
+        console.log(statusData.logs)
 
         if (statusData.status === 'completed' || statusData.status === 'error') {
           clearInterval(pollInterval)
           setIsGenerating(false)
           
-          // Save to localStorage if completed successfully
-          if (statusData.status === 'completed' && statusData.outputs && (statusData.outputs.post || statusData.outputs.script)) {
-            const newOutput = {
-              ...statusData.outputs,
-              timestamp: new Date().toISOString(),
-              originalPrompt: content
+          // Extract outputs from logs if completed successfully
+          if (statusData.status === 'completed') {
+            const extractedOutputs = extractOutputsFromLogs(statusData.logs)
+            
+            // Update the status with extracted outputs
+            const updatedStatusData = {
+              ...statusData,
+              outputs: extractedOutputs
             }
+            setStatus(updatedStatusData)
             
-            const currentSaved = JSON.parse(localStorage.getItem('contentOutputs') || '[]')
-            const updatedSaved = [newOutput, ...currentSaved].slice(0, 10) // Keep only last 10
-            
-            localStorage.setItem('contentOutputs', JSON.stringify(updatedSaved))
-            setSavedOutputs(updatedSaved)
+            // Save to localStorage if we have content
+            if (extractedOutputs.post || extractedOutputs.script) {
+              const newOutput = {
+                ...extractedOutputs,
+                timestamp: new Date().toISOString(),
+                originalPrompt: content
+              }
+              
+              const currentSaved = JSON.parse(localStorage.getItem('contentOutputs') || '[]')
+              const updatedSaved = [newOutput, ...currentSaved].slice(0, 10) // Keep only last 10
+              
+              localStorage.setItem('contentOutputs', JSON.stringify(updatedSaved))
+              setSavedOutputs(updatedSaved)
+            }
           }
         }
       } catch (error) {
@@ -209,7 +273,7 @@ export function ContentGenerator() {
       )}
 
       {/* Output Section */}
-      {status?.status === 'completed' && status.outputs && (
+      {status?.status === 'completed' && (status.outputs?.post || status.outputs?.script) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Social Media Post */}
           {status.outputs.post && (
@@ -220,16 +284,30 @@ export function ContentGenerator() {
                   Social Media Post
                 </h3>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4 rounded-lg max-h-80 overflow-y-auto">
                 <pre className="whitespace-pre-wrap text-gray-700">
                   {status.outputs.post}
                 </pre>
               </div>
               <button
-                onClick={() => navigator.clipboard.writeText(status.outputs.post || '')}
-                className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                onClick={() => copyToClipboard(status.outputs.post || '', 'current-post')}
+                className={`mt-3 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${
+                  copiedStates['current-post'] 
+                    ? 'text-green-600 bg-green-50 px-3 py-1 rounded-md' 
+                    : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1 rounded-md'
+                }`}
               >
-                Copy to Clipboard
+                {copiedStates['current-post'] ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy to Clipboard
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -249,10 +327,24 @@ export function ContentGenerator() {
                 </pre>
               </div>
               <button
-                onClick={() => navigator.clipboard.writeText(status.outputs.script || '')}
-                className="mt-3 text-red-600 hover:text-red-700 text-sm font-medium"
+                onClick={() => copyToClipboard(status.outputs.script || '', 'current-script')}
+                className={`mt-3 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${
+                  copiedStates['current-script'] 
+                    ? 'text-green-600 bg-green-50 px-3 py-1 rounded-md' 
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-md'
+                }`}
               >
-                Copy to Clipboard
+                {copiedStates['current-script'] ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy to Clipboard
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -317,10 +409,24 @@ export function ContentGenerator() {
                         </pre>
                       </div>
                       <button
-                        onClick={() => navigator.clipboard.writeText(output.post || '')}
-                        className="mt-2 text-blue-600 hover:text-blue-700 text-xs"
+                        onClick={() => copyToClipboard(output.post || '', `history-post-${index}`)}
+                        className={`mt-2 flex items-center gap-1 text-xs font-medium transition-all duration-200 ${
+                          copiedStates[`history-post-${index}`] 
+                            ? 'text-green-600 bg-green-50 px-2 py-1 rounded' 
+                            : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded'
+                        }`}
                       >
-                        Copy Post
+                        {copiedStates[`history-post-${index}`] ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy Post
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
@@ -337,10 +443,24 @@ export function ContentGenerator() {
                         </pre>
                       </div>
                       <button
-                        onClick={() => navigator.clipboard.writeText(output.script || '')}
-                        className="mt-2 text-red-600 hover:text-red-700 text-xs"
+                        onClick={() => copyToClipboard(output.script || '', `history-script-${index}`)}
+                        className={`mt-2 flex items-center gap-1 text-xs font-medium transition-all duration-200 ${
+                          copiedStates[`history-script-${index}`] 
+                            ? 'text-green-600 bg-green-50 px-2 py-1 rounded' 
+                            : 'text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded'
+                        }`}
                       >
-                        Copy Script
+                        {copiedStates[`history-script-${index}`] ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy Script
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
