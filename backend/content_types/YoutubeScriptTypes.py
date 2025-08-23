@@ -1,6 +1,3 @@
-import argparse
-import json
-
 from pydantic import BaseModel, Field
 
 class ScriptCreationInput(BaseModel):

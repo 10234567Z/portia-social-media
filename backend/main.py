@@ -11,17 +11,10 @@ from portia import (
     InMemoryToolRegistry,
     Portia,
     Config,
-    Tool,
-    ToolHardError,
-    ToolRunContext,
-    Message,
     PlanBuilderV2,
     StepOutput,
-    Input
 )
 from portia.cli import CLIExecutionHooks
-from pydantic import BaseModel, Field
-from portia.execution_hooks import clarify_on_tool_calls
 
 
 async def main(content: str) -> dict:
@@ -77,9 +70,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     result = asyncio.run(main(args.content))
-    
-    # Print outputs for CLI usage
-    if result:
-        print("\nStep output - " + result['$step_0_output'].value)
-        print("\nStep output - " + result['$step_1_output'].value)
-        print("\nStep output - " + result['$step_2_output'].value)
