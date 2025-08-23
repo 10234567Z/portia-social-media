@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video, Copy, Check, BarChart3 } from 'lucide-react'
+import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video, Copy, Check, BarChart3, Cpu, Activity } from 'lucide-react'
+import { QuickDemo } from './QuickDemo'
+import { AnimatedOutput } from './Typewriter'
+import { PerformanceAnalytics } from './PerformanceAnalytics'
 
 interface GenerationOutput {
   post?: string
@@ -28,6 +31,8 @@ export function ContentGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const [savedOutputs, setSavedOutputs] = useState<GenerationOutput[]>([])
   const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({})
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [animationStage, setAnimationStage] = useState(0)
 
   useEffect(() => {
     const saved = localStorage.getItem('contentOutputs')
@@ -145,6 +150,33 @@ export function ContentGenerator() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Performance Analytics Toggle */}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={() => setShowAnalytics(!showAnalytics)}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all transform hover:scale-105"
+        >
+          {showAnalytics ? <Activity className="w-4 h-4" /> : <Cpu className="w-4 h-4" />}
+          {showAnalytics ? 'Hide Analytics' : 'Show Live Analytics'}
+        </button>
+      </div>
+
+      {/* Performance Analytics Panel */}
+      {showAnalytics && (
+        <div className="mb-8">
+          <PerformanceAnalytics />
+        </div>
+      )}
+
+      {/* Quick Demo Examples */}
+      <QuickDemo 
+        onSelectPrompt={(prompt) => {
+          setContent(prompt)
+          setAnimationStage(0)
+        }}
+        disabled={isGenerating}
+      />
+
       <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">
           What would you like to create content about?
