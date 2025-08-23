@@ -9,10 +9,10 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            AI Content Creator
+            Content Utopia
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Generate engaging social media posts and YouTube scripts with the power of AI agents
+            Generate. Analyze. Improve. Regenerate
           </p>
         </header>
         

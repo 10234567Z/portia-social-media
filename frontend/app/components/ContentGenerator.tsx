@@ -417,8 +417,8 @@ export function ContentGenerator() {
                       {output.timestamp ? new Date(output.timestamp).toLocaleString() : 'Unknown time'}
                     </p>
                     {output.originalPrompt && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        <strong>Prompt:</strong> {output.originalPrompt.slice(0, 100)}...
+                      <p className="text-sm text-gray-600 mt-1 text-wrap">
+                        <strong>Prompt:</strong> {output.originalPrompt}
                       </p>
                     )}
                   </div>
@@ -475,7 +475,7 @@ export function ContentGenerator() {
                         <Video className="w-4 h-4 text-red-600" />
                         <h4 className="font-medium text-gray-800">YouTube Script</h4>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto">
+                      <div className="bg-gray-50 p-3 rounded text-sm">
                         <pre className="whitespace-pre-wrap text-gray-700">
                           {output.script.slice(0, 200)}...
                         </pre>
@@ -509,7 +509,7 @@ export function ContentGenerator() {
                         <BarChart3 className="w-4 h-4 text-purple-600" />
                         <h4 className="font-medium text-gray-800">Content Analysis</h4>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto">
+                      <div className="bg-gray-50 p-3 rounded text-sm">
                         <pre className="whitespace-pre-wrap text-gray-700">
                           {output.analysis.slice(0, 200)}...
                         </pre>

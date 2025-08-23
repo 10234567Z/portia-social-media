@@ -20,7 +20,6 @@ load_dotenv()
 
 app = FastAPI(title="Content Creator API", version="1.0.0")
 
-# Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,7 +28,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request models
 class ContentRequest(BaseModel):
     content: str
 
@@ -38,7 +36,6 @@ class ContentResponse(BaseModel):
     status: str
     message: str
 
-# Store active plans
 active_plans: Dict[str, Dict[str, Any]] = {}
 
 @app.post("/api/generate", response_model=ContentResponse)
@@ -47,7 +44,6 @@ async def generate_content(request: ContentRequest):
     
     plan_id = str(uuid.uuid4())
     
-    # Store plan info
     active_plans[plan_id] = {
         "status": "planning",
         "content": request.content,
@@ -56,7 +52,6 @@ async def generate_content(request: ContentRequest):
         "error": None
     }
     
-    # Start generation in background
     asyncio.create_task(run_content_generation(plan_id, request.content))
     
     return ContentResponse(
@@ -68,17 +63,14 @@ async def generate_content(request: ContentRequest):
 async def run_content_generation(plan_id: str, content: str):
     """Run the actual content generation by calling main.py and capturing output"""
     try:
-        # Update status
         active_plans[plan_id]["status"] = "running"
         active_plans[plan_id]["logs"].append("Starting content generation...")
         
-        # Write content to a temp file for main.py to use
         with open("temp_content.txt", "w") as f:
             f.write(content)
         
         active_plans[plan_id]["logs"].append("Running Portia content generation...")
         
-        # Run the main.py script and capture its output
         import os
         process = await asyncio.create_subprocess_exec(
             sys.executable, "main.py", 
@@ -88,40 +80,32 @@ async def run_content_generation(plan_id: str, content: str):
             cwd=os.getcwd()
         )
         
-        # Read output line by line as it comes
         async for line in process.stdout:
             line_str = line.decode('utf-8').strip()
-            print(line_str)  # For debugging purposes
+            print(line_str)
             if line_str:
                 active_plans[plan_id]["logs"].append(line_str)
                 
-                # Extract step outputs from the CLI logs
                 if "Step output -" in line_str:
                     step_output = line_str.split("Step output - ", 1)[1] if len(line_str.split("Step output - ", 1)) > 1 else ""
                     
-                    # Check recent logs to determine which step this belongs to
                     recent_logs = active_plans[plan_id]["logs"][-10:]
                     if any("Step Output" in log.lower() for log in recent_logs):
                         active_plans[plan_id]["outputs"]["post"] = step_output
         
-        # Wait for process to complete
         await process.wait()
         
-        # Check if we got outputs, if not try to extract from final output
         if not active_plans[plan_id]["outputs"]:
             active_plans[plan_id]["logs"].append("Extracting outputs from final result...")
-            # Look for final output in logs
             for log in active_plans[plan_id]["logs"]:
                 if "Final output:" in log:
                     final_content = log.split("Final output:", 1)[1].strip()
-                    # Split into post and script (rough approach)
                     if len(final_content) > 100:
                         mid_point = len(final_content) // 2
                         active_plans[plan_id]["outputs"]["post"] = final_content[:mid_point]
                         active_plans[plan_id]["outputs"]["script"] = final_content[mid_point:]
                     break
         
-        # Clean up temp file
         if os.path.exists("temp_content.txt"):
             os.remove("temp_content.txt")
         
@@ -178,7 +162,7 @@ async def delete_plan(plan_id: str):
 
 @app.get("/")
 async def root():
-    return {"message": "Content Creator API is running", "version": "1.0.0"}
+    return {"message": "Content Creator API is running gucci"}
 
 if __name__ == "__main__":
     import uvicorn
