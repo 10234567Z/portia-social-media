@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video, Copy, Check } from 'lucide-react'
+import { Send, Loader2, CheckCircle, AlertCircle, FileText, Video, Copy, Check, BarChart3 } from 'lucide-react'
 
 interface GenerationOutput {
   post?: string
   script?: string
+  analysis?: string
   timestamp?: string
   originalPrompt?: string
 }
@@ -41,10 +42,10 @@ export function ContentGenerator() {
   }, [])
 
   // Function to extract post and script from logs
-  const extractOutputsFromLogs = (logs: string[]) => {
+  const extractOutputsFromLogs = (logs: string[]): GenerationOutput => {
     const outputs: GenerationOutput = {}
     let stepOutputCount = 0
-    
+
     for (let i = 0; i < logs.length; i++) {
       const log = logs[i]
       
@@ -68,14 +69,14 @@ export function ContentGenerator() {
           outputs.post = content.trim()
         } else if (stepOutputCount === 2) {
           outputs.script = content.trim()
+        } else if (stepOutputCount === 3) {
+          outputs.analysis = content.trim()
         }
       }
     }
     
     return outputs
-  }
-
-  // Enhanced copy function with visual feedback
+  }  // Enhanced copy function with visual feedback
   const copyToClipboard = async (text: string, id: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -151,7 +152,7 @@ export function ContentGenerator() {
             setStatus(updatedStatusData)
             
             // Save to localStorage if we have content
-            if (extractedOutputs.post || extractedOutputs.script) {
+            if (extractedOutputs.post || extractedOutputs.script || extractedOutputs.analysis) {
               const newOutput = {
                 ...extractedOutputs,
                 timestamp: new Date().toISOString(),
@@ -348,6 +349,43 @@ export function ContentGenerator() {
               </button>
             </div>
           )}
+
+          {/* Content Analysis */}
+          {status.outputs.analysis && (
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Content Analysis
+                </h3>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg max-h-80 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-gray-700">
+                  {status.outputs.analysis}
+                </pre>
+              </div>
+              <button
+                onClick={() => copyToClipboard(status.outputs.analysis || '', 'current-analysis')}
+                className={`mt-3 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${
+                  copiedStates['current-analysis'] 
+                    ? 'text-green-600 bg-green-50 px-3 py-1 rounded-md' 
+                    : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-3 py-1 rounded-md'
+                }`}
+              >
+                {copiedStates['current-analysis'] ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy Analysis
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -396,7 +434,7 @@ export function ContentGenerator() {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {output.post && (
                     <div>
                       <div className="flex items-center gap-2 mb-2">
@@ -459,6 +497,40 @@ export function ContentGenerator() {
                           <>
                             <Copy className="w-3 h-3" />
                             Copy Script
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {output.analysis && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <BarChart3 className="w-4 h-4 text-purple-600" />
+                        <h4 className="font-medium text-gray-800">Content Analysis</h4>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap text-gray-700">
+                          {output.analysis.slice(0, 200)}...
+                        </pre>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(output.analysis || '', `history-analysis-${index}`)}
+                        className={`mt-2 flex items-center gap-1 text-xs font-medium transition-all duration-200 ${
+                          copiedStates[`history-analysis-${index}`] 
+                            ? 'text-green-600 bg-green-50 px-2 py-1 rounded' 
+                            : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-2 py-1 rounded'
+                        }`}
+                      >
+                        {copiedStates[`history-analysis-${index}`] ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy Analysis
                           </>
                         )}
                       </button>

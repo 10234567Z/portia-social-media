@@ -1,10 +1,10 @@
 import argparse
 import json
 from typing import Type
+from tools.ContentAnalyzer import ContentAnalyzerTool
 from tools.PostCreation import PostCreationTool
 from dotenv import load_dotenv
 from tools.YoutubeScript import ScriptCreationTool
-from utilities.file_loader import load_instructions_file
 
 from portia import (
     DefaultToolRegistry,
@@ -29,14 +29,18 @@ def main(content: str):
 
     tools = DefaultToolRegistry(
             config=config,
-        ) + InMemoryToolRegistry.from_local_tools([PostCreationTool()]) + InMemoryToolRegistry.from_local_tools([ScriptCreationTool()])
+        ) + InMemoryToolRegistry.from_local_tools([PostCreationTool()]) + InMemoryToolRegistry.from_local_tools([ScriptCreationTool()]) + InMemoryToolRegistry.from_local_tools([ContentAnalyzerTool()])
 
     portia = Portia(
         config=config,
         tools=tools,
         execution_hooks=CLIExecutionHooks(),
     )
-    planning_prompt = f"Use the post_creation tool to generate a text post from this description and script_creation tool from this content given: {content}"
+    planning_prompt = f"""
+    1. Use post_creation tool to generate a social media post
+    2. Use script_creation tool to generate a YouTube script  
+    3. Use content_analyzer tool to evaluate both pieces of content: {content}
+    """
 
     plan = portia.plan(planning_prompt)
     print("Plan:")
