@@ -12,7 +12,7 @@ export default function Home() {
             Content Utopia
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Generate. Analyze. Improve. Regenerate
+            Generate. Analyze. Improve
           </p>
         </header>
         
