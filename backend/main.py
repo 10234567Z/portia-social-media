@@ -15,17 +15,18 @@ from portia import (
     ToolHardError,
     ToolRunContext,
     Message,
+    PlanBuilderV2,
+    StepOutput,
+    Input
 )
 from portia.cli import CLIExecutionHooks
 from pydantic import BaseModel, Field
 from portia.execution_hooks import clarify_on_tool_calls
 
 
-def main(content: str):
-    with open("inbox.txt", "w") as f:
-        f.write(content)
+async def main(content: str) -> dict:
 
-    config = Config.from_default(default_log_level="INFO")
+    config = Config.from_default(default_log_level="ERROR")
 
     tools = DefaultToolRegistry(
             config=config,
@@ -36,19 +37,35 @@ def main(content: str):
         tools=tools,
         execution_hooks=CLIExecutionHooks(),
     )
-    planning_prompt = f"""
-    1. Use post_creation tool to generate a social media post
-    2. Use script_creation tool to generate a YouTube script  
-    3. Use content_analyzer tool to evaluate both pieces of content: {content}
-    """
 
-    plan = portia.plan(planning_prompt)
-    print("Plan:")
-    print(plan.pretty_print())
-    portia.run_plan(plan)
+    plan = (PlanBuilderV2("Create a new social media post, youtube script and analyze the rating of that content").invoke_tool_step(
+        step_name="Create a new social media post",
+        tool="post_creation",
+        args={
+            "content": content
+        }
+    ).invoke_tool_step(
+        step_name="Create a new youtube script",
+        tool="script_creation",
+        args={
+            "content": f"Here is the post made at {StepOutput('Create a new social media post')} and the original prompt {content}, generate a Youtube Script for this content."
+        }
+    ).invoke_tool_step(
+        step_name="Analyze the content",
+        tool="content_analyzer",
+        args={
+            "post_content": StepOutput('Create a new social media post'),
+            "script_content": StepOutput('Create a new youtube script')
+        }
+    ).build()
+    )
+    plan_run = await portia.arun_plan(plan)
+    
+    return plan_run.outputs.step_outputs
 
 
 if __name__ == "__main__":
+    import asyncio
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -59,4 +76,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(args.content)
+    result = asyncio.run(main(args.content))
+    
+    # Print outputs for CLI usage
+    if result:
+        print("\nStep output - " + result['$step_0_output'].value)
+        print("\nStep output - " + result['$step_1_output'].value)
+        print("\nStep output - " + result['$step_2_output'].value)

@@ -41,35 +41,43 @@ export function ContentGenerator() {
     }
   }, [])
 
-  // Function to extract post and script from logs
+  // Function to extract post, script, and analysis from logs
   const extractOutputsFromLogs = (logs: string[]): GenerationOutput => {
     const outputs: GenerationOutput = {}
-    let stepOutputCount = 0
 
     for (let i = 0; i < logs.length; i++) {
       const log = logs[i]
       
-      if (log.includes("Step output -")) {
-        stepOutputCount++
+      // Look for "Completed step X, result:" pattern
+      if (log.includes("Completed step") && log.includes(", result:")) {
+        // Extract step number
+        const stepMatch = log.match(/Completed step (\d+)/)
+        if (!stepMatch) continue
         
-        // Extract content after "Step output - "
-        const stepOutputStart = log.indexOf("Step output - ") + "Step output - ".length
-        let content = log.substring(stepOutputStart)
+        const stepNumber = parseInt(stepMatch[1])
         
-        // Collect subsequent lines until we hit next "INFO"
+        // Extract content after "result: "
+        const resultIndex = log.indexOf(", result:")
+        if (resultIndex === -1) continue
+        
+        let content = log.substring(resultIndex + ", result:".length).trim()
+        
+        // Collect subsequent lines until we hit next "INFO" or end of logs
         for (let j = i + 1; j < logs.length; j++) {
           if (logs[j].includes("INFO")) {
             break
           }
-          content += "\n" + logs[j]
+          if (logs[j].trim()) { // Only add non-empty lines
+            content += "\n" + logs[j]
+          }
         }
         
-        // Assign based on step count
-        if (stepOutputCount === 1) {
+        // Map step numbers to outputs (step 0 = post, step 1 = script, step 2 = analysis)
+        if (stepNumber === 0) {
           outputs.post = content.trim()
-        } else if (stepOutputCount === 2) {
+        } else if (stepNumber === 1) {
           outputs.script = content.trim()
-        } else if (stepOutputCount === 3) {
+        } else if (stepNumber === 2) {
           outputs.analysis = content.trim()
         }
       }
@@ -140,21 +148,19 @@ export function ContentGenerator() {
           clearInterval(pollInterval)
           setIsGenerating(false)
           
-          // Extract outputs from logs if completed successfully
-          if (statusData.status === 'completed') {
-            const extractedOutputs = extractOutputsFromLogs(statusData.logs)
-            
-            // Update the status with extracted outputs
+          // Use server outputs directly if completed successfully
+          if (statusData.status === 'completed' && statusData.outputs) {
+            // Update the status with server outputs
             const updatedStatusData = {
               ...statusData,
-              outputs: extractedOutputs
+              outputs: statusData.outputs
             }
             setStatus(updatedStatusData)
             
             // Save to localStorage if we have content
-            if (extractedOutputs.post || extractedOutputs.script || extractedOutputs.analysis) {
+            if (statusData.outputs.post || statusData.outputs.script || statusData.outputs.analysis) {
               const newOutput = {
-                ...extractedOutputs,
+                ...statusData.outputs,
                 timestamp: new Date().toISOString(),
                 originalPrompt: content
               }
@@ -243,7 +249,7 @@ export function ContentGenerator() {
           <div className="flex items-center gap-3 mb-4">
             {getStatusIcon()}
             <h3 className="text-lg font-semibold text-gray-800">
-              {getStatusText()}
+              Generating...<i>~May take a minute or two to get the best results~</i>
             </h3>
           </div>
 
@@ -256,25 +262,11 @@ export function ContentGenerator() {
               </pre>
             </div>
           )}
-
-          {/* Logs Display */}
-          {logs.length > 0 && (
-            <div>
-              <h4 className="font-medium text-gray-700 mb-2">Progress Logs:</h4>
-              <div className="bg-gray-50 p-3 rounded max-h-40 overflow-y-auto">
-                {logs.map((log, index) => (
-                  <div key={index} className="text-sm text-gray-600 py-1">
-                    {log}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Output Section */}
-      {status?.status === 'completed' && (status.outputs?.post || status.outputs?.script) && (
+      {status?.status === 'completed' && (status.outputs?.post || status.outputs?.script || status.outputs?.analysis) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Social Media Post */}
           {status.outputs.post && (

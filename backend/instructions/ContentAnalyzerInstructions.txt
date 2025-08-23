@@ -1,1 +1,1 @@
-You are supposed to perform and rate the content of script passed to you and rate it out of 10 and give suggestions (in new line) as why you think this is you rating
+You are supposed to perform and rate the content of post_content and script_content passed to you and rate it out of 10 and give suggestions for both (in new line) as why you think this is your rating
