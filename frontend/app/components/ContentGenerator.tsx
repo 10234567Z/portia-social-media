@@ -27,9 +27,8 @@ export function ContentGenerator() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [logs, setLogs] = useState<string[]>([])
   const [savedOutputs, setSavedOutputs] = useState<GenerationOutput[]>([])
-  const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({}) // Track copy states
+  const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({})
 
-  // Load saved outputs from localStorage on component mount
   useEffect(() => {
     const saved = localStorage.getItem('contentOutputs')
     if (saved) {
@@ -41,56 +40,11 @@ export function ContentGenerator() {
     }
   }, [])
 
-  // Function to extract post, script, and analysis from logs
-  const extractOutputsFromLogs = (logs: string[]): GenerationOutput => {
-    const outputs: GenerationOutput = {}
-
-    for (let i = 0; i < logs.length; i++) {
-      const log = logs[i]
-      
-      // Look for "Completed step X, result:" pattern
-      if (log.includes("Completed step") && log.includes(", result:")) {
-        // Extract step number
-        const stepMatch = log.match(/Completed step (\d+)/)
-        if (!stepMatch) continue
-        
-        const stepNumber = parseInt(stepMatch[1])
-        
-        // Extract content after "result: "
-        const resultIndex = log.indexOf(", result:")
-        if (resultIndex === -1) continue
-        
-        let content = log.substring(resultIndex + ", result:".length).trim()
-        
-        // Collect subsequent lines until we hit next "INFO" or end of logs
-        for (let j = i + 1; j < logs.length; j++) {
-          if (logs[j].includes("INFO")) {
-            break
-          }
-          if (logs[j].trim()) { // Only add non-empty lines
-            content += "\n" + logs[j]
-          }
-        }
-        
-        // Map step numbers to outputs (step 0 = post, step 1 = script, step 2 = analysis)
-        if (stepNumber === 0) {
-          outputs.post = content.trim()
-        } else if (stepNumber === 1) {
-          outputs.script = content.trim()
-        } else if (stepNumber === 2) {
-          outputs.analysis = content.trim()
-        }
-      }
-    }
-    
-    return outputs
-  }  // Enhanced copy function with visual feedback
   const copyToClipboard = async (text: string, id: string) => {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedStates(prev => ({ ...prev, [id]: true }))
       
-      // Reset the copied state after 2 seconds
       setTimeout(() => {
         setCopiedStates(prev => ({ ...prev, [id]: false }))
       }, 2000)
@@ -107,7 +61,6 @@ export function ContentGenerator() {
     setStatus(null)
 
     try {
-      // Start generation
       const response = await fetch('http://localhost:8000/api/generate', {
         method: 'POST',
         headers: {
@@ -123,7 +76,6 @@ export function ContentGenerator() {
       const result = await response.json()
       setPlanId(result.plan_id)
 
-      // Start polling for status
       pollStatus(result.plan_id)
     } catch (error) {
       console.error('Error:', error)
@@ -148,16 +100,13 @@ export function ContentGenerator() {
           clearInterval(pollInterval)
           setIsGenerating(false)
           
-          // Use server outputs directly if completed successfully
           if (statusData.status === 'completed' && statusData.outputs) {
-            // Update the status with server outputs
             const updatedStatusData = {
               ...statusData,
               outputs: statusData.outputs
             }
             setStatus(updatedStatusData)
             
-            // Save to localStorage if we have content
             if (statusData.outputs.post || statusData.outputs.script || statusData.outputs.analysis) {
               const newOutput = {
                 ...statusData.outputs,
@@ -166,7 +115,7 @@ export function ContentGenerator() {
               }
               
               const currentSaved = JSON.parse(localStorage.getItem('contentOutputs') || '[]')
-              const updatedSaved = [newOutput, ...currentSaved].slice(0, 10) // Keep only last 10
+              const updatedSaved = [newOutput, ...currentSaved].slice(0, 10)
               
               localStorage.setItem('contentOutputs', JSON.stringify(updatedSaved))
               setSavedOutputs(updatedSaved)
@@ -194,26 +143,8 @@ export function ContentGenerator() {
     }
   }
 
-  const getStatusText = () => {
-    if (!status) return 'Initializing...'
-    
-    switch (status.status) {
-      case 'planning':
-        return 'Creating plan...'
-      case 'executing':
-        return 'Generating content...'
-      case 'completed':
-        return 'Content generated successfully!'
-      case 'error':
-        return 'Generation failed'
-      default:
-        return status.status
-    }
-  }
-
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Input Section */}
       <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">
           What would you like to create content about?
@@ -243,7 +174,6 @@ export function ContentGenerator() {
         </div>
       </div>
 
-      {/* Status Section */}
       {isGenerating && (
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -253,7 +183,6 @@ export function ContentGenerator() {
             </h3>
           </div>
 
-          {/* Plan Display */}
           {status?.plan && (
             <div className="mb-4">
               <h4 className="font-medium text-gray-700 mb-2">Execution Plan:</h4>
@@ -265,10 +194,8 @@ export function ContentGenerator() {
         </div>
       )}
 
-      {/* Output Section */}
       {status?.status === 'completed' && (status.outputs?.post || status.outputs?.script || status.outputs?.analysis) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Social Media Post */}
           {status.outputs.post && (
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -305,7 +232,6 @@ export function ContentGenerator() {
             </div>
           )}
 
-          {/* YouTube Script */}
           {status.outputs.script && (
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -342,7 +268,6 @@ export function ContentGenerator() {
             </div>
           )}
 
-          {/* Content Analysis */}
           {status.outputs.analysis && (
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -381,7 +306,6 @@ export function ContentGenerator() {
         </div>
       )}
 
-      {/* Error Section */}
       {status?.status === 'error' && status.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-center gap-2 mb-2">
@@ -393,7 +317,6 @@ export function ContentGenerator() {
           <p className="text-red-700">{status.error}</p>
         </div>
       )}
-      {/* Saved Outputs Section */}
       {savedOutputs.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">
