@@ -442,8 +442,8 @@ export function ContentGenerator() {
                         <h4 className="font-medium text-gray-800">Social Media Post</h4>
                       </div>
                       <div className="bg-gray-50 p-3 rounded text-sm">
-                        <pre className="whitespace-pre-wrap text-gray-700">
-                          {output.post.slice(0, 200)}...
+                        <pre className="whitespace-pre-wrap text-gray-700 max-h-[180px] overflow-y-auto">
+                          {output.post}
                         </pre>
                       </div>
                       <button
@@ -476,8 +476,8 @@ export function ContentGenerator() {
                         <h4 className="font-medium text-gray-800">YouTube Script</h4>
                       </div>
                       <div className="bg-gray-50 p-3 rounded text-sm">
-                        <pre className="whitespace-pre-wrap text-gray-700">
-                          {output.script.slice(0, 200)}...
+                        <pre className="whitespace-pre-wrap text-gray-700 max-h-[180px] overflow-y-auto">
+                          {output.script}
                         </pre>
                       </div>
                       <button
@@ -510,8 +510,8 @@ export function ContentGenerator() {
                         <h4 className="font-medium text-gray-800">Content Analysis</h4>
                       </div>
                       <div className="bg-gray-50 p-3 rounded text-sm">
-                        <pre className="whitespace-pre-wrap text-gray-700">
-                          {output.analysis.slice(0, 200)}...
+                        <pre className="whitespace-pre-wrap text-gray-700 max-h-[180px] overflow-y-auto">
+                          {output.analysis}
                         </pre>
                       </div>
                       <button
