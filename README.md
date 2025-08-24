@@ -130,7 +130,7 @@ graph LR
 git clone <repository-url> && cd portia-hack
 
 # 2. Backend (Auto-start with analytics)
-cd backend && ./start_enhanced.sh
+cd backend && ./start_server.sh
 
 # 3. Frontend (Parallel terminal)
 cd frontend && npm run dev
