@@ -32,7 +32,7 @@ export function PerformanceAnalytics() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/analytics')
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics`)
         if (response.ok) {
           const data = await response.json()
           setAnalytics(data)

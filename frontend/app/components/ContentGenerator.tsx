@@ -91,7 +91,7 @@ export function ContentGenerator() {
   const pollStatus = async (planId: string) => {
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/status/${planId}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/status/${planId}`)
         if (!response.ok) {
           throw new Error('Failed to get status')
         }
