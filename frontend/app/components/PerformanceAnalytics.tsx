@@ -89,7 +89,7 @@ export function PerformanceAnalytics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -117,18 +117,6 @@ export function PerformanceAnalytics() {
           </div>
           <div className="text-2xl font-bold text-purple-900">
             {analytics.performance_metrics.success_rate.toFixed(1)}%
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-5 h-5 text-orange-600" />
-            <span className="text-sm font-medium text-orange-800">Fastest Time</span>
-          </div>
-          <div className="text-2xl font-bold text-orange-900">
-            {analytics.performance_metrics.fastest_time === Infinity 
-              ? 'N/A' 
-              : `${analytics.performance_metrics.fastest_time.toFixed(1)}s`}
           </div>
         </div>
       </div>
