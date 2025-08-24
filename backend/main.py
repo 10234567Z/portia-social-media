@@ -19,7 +19,7 @@ from portia.cli import CLIExecutionHooks
 
 async def main(content: str) -> dict:
 
-    config = Config.from_default(default_log_level="ERROR")
+    config = Config.from_default(default_log_level="INFO")
 
     tools = DefaultToolRegistry(
             config=config,
