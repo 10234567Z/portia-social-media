@@ -39,11 +39,17 @@ Instead of static output, we built a **living, breathing content generation syst
 ### **Multi-Tool Agent Pipeline**
 ```mermaid
 graph LR
-    [User Input] --> [🔧 PostCreation Tool]
-    [🔧 ScriptCreation Tool] 
-    [🔧 ContentAnalyzer Tool]
-    [📊 Performance Analytics]
-    [✨ Animated Output]
+    A[User Input] --> B[🔧 PostCreation Tool]
+    B --> C[🔧 ScriptCreation Tool] 
+    C --> D[🔧 ContentAnalyzer Tool]
+    D --> E[📊 Performance Analytics]
+    E --> F[✨ Animated Output]
+    
+    style B fill:#e1f5fe
+    style C fill:#f3e5f5  
+    style D fill:#e8f5e8
+    style E fill:#fff3e0
+    style F fill:#fce4ec
 ```
 
 ### **Tool Integration Details**
@@ -149,10 +155,3 @@ cd frontend && npm run dev
 - **Error Handling**: Robust retry logic and graceful failures
 - **Scalability**: Async processing with concurrent user support
 - **Monitoring**: Real-time performance tracking and optimization
-
-### **Judge Appeal Factors**
-1. **Immediate Impact**: 30-second demo shows complete value
-2. **Visual Wow**: Live analytics + animations impress visually
-3. **Technical Depth**: Performance monitoring shows engineering skill
-4. **Business Value**: Clear ROI and practical use cases
-5. **Professional Polish**: Production-ready UI and documentation
