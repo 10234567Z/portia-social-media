@@ -1,9 +1,8 @@
-# 🏆 Content Creator Pro - AgentHack 2025 Winner 
+# 🏆 Content Utopia
 ### *Multi-Tool AI Content Generation with Live Performance Analytics*
 
 > **"From Idea to Impact in few Seconds"** - Professional content creation powered by Portia's multi-tool orchestration with real-time performance monitoring and animated user experience.
 
-[![🏆 AgentHack 2025](https://img.shields.io/badge/AgentHack-2025%20Submission-gold)](https://agenthack.com)
 [![Portia](https://img.shields.io/badge/Powered%20by-Portia%20SDK-blue)](https://portialabs.ai)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Production%20Ready-green)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Next.js-15%20Turbopack-black)](https://nextjs.org)
